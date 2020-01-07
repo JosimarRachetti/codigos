@@ -1,2 +1,1 @@
-# codigos
- arquivos de codigos
+Pasta com objetivo de arquivar codigos desenvolvidos
