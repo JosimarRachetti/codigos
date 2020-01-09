@@ -1,6 +1,6 @@
 Codigo de jogo de naves
 
-objetivo jogo - acalçar mais de 100 pontos
+objetivo jogo - alcançar mais de 100 pontos
 
 o jogo contém uma nave que é controlada pelas teclas direcionais do teclado.
 
