@@ -1,4 +1,3 @@
-import os
 import sys
 from random import randint
 import pygame
@@ -6,56 +5,62 @@ import time
 
 pygame.init()
 
-# Play surface
-tela = pygame.display.set_mode((900,500))
+tela = pygame.display.set_mode((900, 500))
+
 pygame.display.set_caption("Battle Star")
 
-# função para colocar imagem
-def load_image(image_name):
-    '''carrega uma imgagem na memoria'''
+cor_amarelo = (255, 255, 0)
+cor_amarelo_claro = (255, 218, 0)
+cor_amarelo_escuro = (255, 181, 0)
+cor_preta = (0, 0, 0)
 
+
+def load_image(image_name):
     try:
         image = pygame.image.load(image_name).convert_alpha()
     except pygame.error:
         raise SystemExit
     return image
 
-def posicaonave1(inix, iniy):
-    inix = randint(0, 450)
-    iniy = -200
-    return inix, iniy
+
+def render_on_scren(objeto):
+    tela.blit(objeto["imagem"], (objeto["x"], objeto["y"]))
 
 
-def posicaonave2(inix, iniy):
-    inix = randint(450, 800)
-    iniy = -150
-    return inix, iniy
+def posicao_nave_um(range_ini, range_end):
+    pos_x = randint(range_ini, range_end)
+    pos_y = -200
+    return pos_x, pos_y
 
 
-def txt(msg,tam,cor):
+def txt(msg, tam, cor):
     fonte = pygame.font.SysFont("freesansbold.ttf", tam)
     texto = fonte.render(msg, True, cor)
     return texto
 
 
-def botao(msg, x, y, w, h, ic, ac, action=None):
+def botao(msg, x, y, weight, height, hover_cor_out, hover_cor_in, action=None):
+
     mouse = pygame.mouse.get_pos()
-    click = pygame.mouse.get_pressed()
-    if x + w > mouse[0] > x and y + h > mouse[1] > y:
-        pygame.draw.rect(tela, ac, (x, y, w, h))
-        if click[0] == 1 and action != None:
-            if "start" == action:
-                intro()
-            elif action == "quit":
-                pygame.quit()
-                sys.exit()
-    else:
-        pygame.draw.rect(tela, ic, (x, y, w, h))
-    texto = txt(msg, 25,(0,0,0))
-    tela.blit(texto, ((x + (w / 2) - 13), (y + (h / 2) - 8)))
+    click = pygame.mouse.get_pressed(3)
+    pygame.draw.rect(tela, hover_cor_out, (x, y, weight, height))
+
+    if x + weight > mouse[0] > x and y + height > mouse[1] > y:
+        pygame.draw.rect(tela, hover_cor_in, (x, y, weight, height))
+        if click[0] and action:
+            action()
+
+    x, y = (x + (weight / 2)*0.9), (y + (height / 2)*0.7)
+    render_text_on_screen(msg["text"], msg["tam"], msg["cor"], x, y)
+
+
+def render_text_on_screen(msg, size_font, color_font, x, y):
+    texto = txt(msg, size_font, color_font)
+    tela.blit(texto, (x, y))
+
 
 def winner(imagem, ptsvida, pontos):
-    tela.blit(imagem, (0,0))
+    tela.blit(imagem, (0, 0))
     if ptsvida < 1:
         mensagem = txt(" 0 VIDA, VOCE FOI DERROTADO PELO IMPERIO!!", 50, (255, 215, 0))
     elif pontos > 99:
@@ -66,13 +71,16 @@ def winner(imagem, ptsvida, pontos):
     time.sleep(7)
     menu()
 
+
 def playexplosao():
     pygame.mixer.music.load("explosao.ogg")
     pygame.mixer.music.play(1)
 
-def playtiro():
+
+def play_tiro():
     pygame.mixer.music.load("tiro.ogg")
     pygame.mixer.music.play(1)
+
 
 def playaudio():
     pygame.mixer.music.load("audiofundo.ogg")
@@ -81,246 +89,178 @@ def playaudio():
 
 
 def jogo():
-    yinimiga = -100
-    xinimiga = 200
-    yinimiga2 = -100
-    xinimiga2 = 400
-    numtiro = 0
-    tx = [-100, -100, -100, -100, -100]
-    ty = [-100, -100, -100, -100, -100]
-    explosaox = [-200, -200]
-    explosaoy = [-200, -200]
-    mover = 20
-    moveini = 5
-    imagem = load_image("fundoespaco.jpg")
-    nave = load_image("navee.png")
-    naveinimiga = load_image("naveinimi.png")
-    naveinimiga2 = load_image("naveinimi.png")
-    explosao = [load_image("explosao.png"), load_image("explosao.png")]
-    tiro = [load_image("tiro.png"), load_image("tiro.png"), load_image("tiro.png"), load_image("tiro.png"),
-            load_image("tiro.png")]
-    pontovida = load_image("pontosevida.png")
 
+    naves_inimigas = {"um": {"imagem": load_image("naveinimi.png"),
+                             "x": 200,
+                             "y": -100
+                             },
+                      "dois": {"imagem": load_image("naveinimi.png"),
+                               "x": 400,
+                               "y": -100}
+                      }
+
+    num_tiro = 0
+
+    nave = {"imagem": load_image("navee.png"),
+            "x": 450, "y": 350}
+
+    tiros = {}
+    explosoes = []
+
+    movimento_nave = 20
+    movimento_inimigo = 5
+
+    imagem = load_image("fundoespaco.jpg")
+
+    pontuacao_vida = load_image("pontosevida.png")
     pontos = 0
     vida = 1000
 
-    tempofim = 180
+    tempo_fim = 180
 
-    comandoexplosao = 1000
-    comandoexplosao2 = 1000
+    level = 10
 
-    level=10
+    x, y = 450, 350
 
-    x = 450
-    y = 350
-
-
-    while True:
-
+    while 1:
         pygame.time.delay(50)
 
         for evento in pygame.event.get():
-
             if evento.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+                quit_game()
 
         comando = pygame.key.get_pressed()
+
         if comando[pygame.K_UP]:
             if y > 0:
-                y -= mover
-        if comando[pygame.K_DOWN]:
+                y -= movimento_nave
+        elif comando[pygame.K_DOWN]:
             if y < 350:
-                y += mover
-        if comando[pygame.K_LEFT]:
+                y += movimento_nave
+        elif comando[pygame.K_LEFT]:
             if x > 0:
-                x -= mover
-        if comando[pygame.K_RIGHT]:
+                x -= movimento_nave
+        elif comando[pygame.K_RIGHT]:
             if x < 800:
-                x += mover
+                x += movimento_nave
+
         if comando[pygame.K_SPACE]:
             tempoinicio = time.time() * 60
-            if (tempoinicio - tempofim) > 60:
-                ty[numtiro] = y
-                tx[numtiro] = x + 45
-                numtiro += 1
-                playtiro()
-                tempofim = time.time() * 60
-                if numtiro > 4:
-                    numtiro = 0
+            if (tempoinicio - tempo_fim) > 60:
+                tiros.update({f"{num_tiro}": {
+                                "imagem": load_image("tiro.png"),
+                                "x": x+45,
+                                "y": y
+                            }
+                         })
+                num_tiro += 1
+                play_tiro()
+                tempo_fim = time.time() * 60
 
-        yinimiga += moveini
-        yinimiga2 += moveini
+        for tiro in tiros:
+            tiros[tiro]["y"] -= 5
 
-        if ty[0] > -100:
-            ty[0] -= 5
-        if ty[1] > -100:
-            ty[1] -= 5
-        if ty[2] > -100:
-            ty[2] -= 5
-        if ty[3] > -100:
-            ty[3] -= 5
-        if ty[4] > -100:
-            ty[4] -= 5
+        tiros_to_delete = []
+        for m in naves_inimigas:
+            if naves_inimigas[m]["y"] > 600:
+                naves_inimigas[m]["x"], naves_inimigas[m]["y"] = posicao_nave_um(0, 800)
+            else:
+                naves_inimigas[m]["y"] += movimento_inimigo
 
-        if yinimiga > 600:
-            xinimiga, yinimiga = posicaonave1(xinimiga, yinimiga)
+            if (x + 90) > naves_inimigas[m]["x"] and x < (naves_inimigas[m]["x"] + 140):
+                if y < (naves_inimigas[m]["y"] + 114) and naves_inimigas[m]["y"] < (y + 120):
+                    vida -= 5
 
-        if yinimiga2 > 600:
-            xinimiga2, yinimiga2 = posicaonave2(xinimiga2, yinimiga2)
+            for n in tiros:
+                if (tiros[n]["x"] + 9) > naves_inimigas[m]["x"] and tiros[n]["x"] < (naves_inimigas[m]["x"] + 140):
+                    if tiros[n]["y"] < (naves_inimigas[m]["y"] + 90) and naves_inimigas[m]["y"] < (tiros[n]["y"] + 78):
+                        tiros_to_delete.append(n)
+                        explosao = {"imagem": load_image("explosao.png")}
+                        explosao_x, explosao_y = naves_inimigas[m]["x"], naves_inimigas[m]["y"]
+                        explosao.update({"x": explosao_x,
+                                         "y": explosao_y,
+                                         "time": 1000})
+                        explosoes.append(explosao)
+                        naves_inimigas[m]["x"], naves_inimigas[m]["y"] = posicao_nave_um(0, 800)
+                        comando_explosao, pontos = 1000, (pontos + 1)
+                        playexplosao()
 
-        if (x + 90) > xinimiga and x < (xinimiga + 140):
-            if y < (yinimiga + 114) and yinimiga < (y + 120):
-                vida-=5
+        for tiro_key in tiros_to_delete:
+            del tiros[tiro_key]
 
-        if (x + 90) > xinimiga2 and x < (xinimiga2 + 140):
-            if y < (yinimiga2 + 114) and yinimiga2 < (y + 120):
-                vida-=5
+        indeces_to_delete = []
+        for indice_explosoes in range(len(explosoes)):
+            if explosoes[indice_explosoes]["time"] < 0:
+                indeces_to_delete.append(indice_explosoes)
+            else:
+                explosoes[indice_explosoes]["time"] -= 100
 
-        if (tx[0] + 9) > xinimiga and tx[0] < (xinimiga + 140):
-            if ty[0] < (yinimiga + 90) and yinimiga < (ty[0] + 78):
-                explosaox[0], explosaoy[0] = xinimiga, yinimiga
-                xinimiga, yinimiga = posicaonave1(xinimiga, yinimiga)
-                tx[0], ty[0] = -100, -100
-                comandoexplosao, pontos = 1000, (pontos+1)
-                playexplosao()
-
-        if (tx[1] + 9) > xinimiga and tx[1] < (xinimiga + 140):
-            if ty[1] < (yinimiga + 90) and yinimiga < (ty[1] + 78):
-                explosaox[0], explosaoy[0] = xinimiga, yinimiga
-                xinimiga, yinimiga = posicaonave1(xinimiga, yinimiga)
-                tx[1], ty[1] = -100, -100
-                comandoexplosao, pontos = 1000, (pontos+1)
-                playexplosao()
-
-        if (tx[2] + 9) > xinimiga and tx[2] < (xinimiga + 140):
-            if ty[2] < (yinimiga + 90) and yinimiga < (ty[2] + 78):
-                explosaox[0], explosaoy[0] = xinimiga, yinimiga
-                xinimiga, yinimiga = posicaonave1(xinimiga, yinimiga)
-                tx[2], ty[2] = -100, -100
-                comandoexplosao, pontos = 1000, (pontos+1)
-                playexplosao()
-
-        if (tx[3] + 9) > xinimiga and tx[3] < (xinimiga + 140):
-            if ty[3] < (yinimiga + 90) and yinimiga < (ty[3] + 78):
-                explosaox[0], explosaoy[0] = xinimiga, yinimiga
-                xinimiga, yinimiga = posicaonave1(xinimiga, yinimiga)
-                tx[3], ty[3] = -100, -100
-                comandoexplosao, pontos = 1000, (pontos+1)
-                playexplosao()
-
-        if (tx[4] + 9) > xinimiga and tx[4] < (xinimiga + 140):
-            if ty[4] < (yinimiga + 90) and yinimiga < (ty[4] + 78):
-                explosaox[0], explosaoy[0] = xinimiga, yinimiga
-                xinimiga, yinimiga = posicaonave1(xinimiga, yinimiga)
-                tx[4], ty[4] = -100, -100
-                comandoexplosao, pontos = 1000, (pontos+1)
-                playexplosao()
-
-        if (tx[0] + 9) > xinimiga2 and tx[0] < (xinimiga2 + 140):
-            if ty[0] < (yinimiga2 + 90) and yinimiga2 < (ty[0] + 78):
-                explosaox[1], explosaoy[1] = xinimiga2, yinimiga2
-                xinimiga2, yinimiga2 = posicaonave2(xinimiga2, yinimiga2)
-                tx[0], ty[0] = -100, -100
-                comandoexplosao2, pontos = 1000, (pontos+1)
-                playexplosao()
-
-        if (tx[1] + 9) > xinimiga2 and tx[1] < (xinimiga2 + 140):
-            if ty[1] < (yinimiga2 + 90) and yinimiga2 < (ty[1] + 78):
-                explosaox[1], explosaoy[1] = xinimiga2, yinimiga2
-                xinimiga2, yinimiga2 = posicaonave2(xinimiga2, yinimiga2)
-                tx[1], ty[1] = -100, -100
-                comandoexplosao2, pontos = 1000, (pontos+1)
-                playexplosao()
-
-        if (tx[2] + 9) > xinimiga2 and tx[2] < (xinimiga2 + 140):
-            if ty[2] < (yinimiga2 + 90) and yinimiga2 < (ty[2] + 78):
-                explosaox[1], explosaoy[1] = xinimiga2, yinimiga2
-                xinimiga2, yinimiga2 = posicaonave2(xinimiga2, yinimiga2)
-                tx[2], ty[2] = -100, -100
-                comandoexplosao2, pontos = 1000, (pontos+1)
-                playexplosao()
-
-        if (tx[3] + 9) > xinimiga2 and tx[3] < (xinimiga2 + 140):
-            if ty[3] < (yinimiga2 + 90) and yinimiga2 < (ty[3] + 78):
-                explosaox[1], explosaoy[1] = xinimiga2, yinimiga2
-                xinimiga2, yinimiga2 = posicaonave2(xinimiga2, yinimiga2)
-                tx[3], ty[3] = -100, -100
-                comandoexplosao2, pontos = 1000, (pontos+1)
-                playexplosao()
-
-        if (tx[4] + 9) > xinimiga2 and tx[4] < (xinimiga2 + 140):
-            if ty[4] < (yinimiga2 + 90) and yinimiga2 < (ty[4] + 78):
-                explosaox[1], explosaoy[1] = xinimiga2, yinimiga2
-                xinimiga2, yinimiga2 = posicaonave2(xinimiga2, yinimiga2)
-                tx[4], ty[4] = -100, -100
-                comandoexplosao2, pontos = 1000, (pontos+1)
-                playexplosao()
-
-        if comandoexplosao < 0:
-            explosaox[0], explosaoy[0] = -200, -200
-        else:
-            comandoexplosao -= 100
-
-        if comandoexplosao2 < 0:
-            explosaox[1], explosaoy[1] = -200, -200
-        else:
-            comandoexplosao2 -= 100
+        for indece in indeces_to_delete:
+            del explosoes[indece]
 
         if pontos > level:
-            moveini += 2
-            level=level+10
+            movimento_inimigo += 2
+            level = level + 10
 
         if pontos > 99 or vida < 0: winner(imagem, vida, pontos)
 
         tela.blit(imagem, (0, 0))
-        tela.blit(nave, (x, y))
-        tela.blit(naveinimiga, (xinimiga, yinimiga))
-        tela.blit(naveinimiga2, (xinimiga2, yinimiga2))
-        tela.blit(tiro[0], (tx[0], ty[0]))
-        tela.blit(tiro[1], (tx[1], ty[1]))
-        tela.blit(tiro[2], (tx[2], ty[2]))
-        tela.blit(tiro[3], (tx[3], ty[3]))
-        tela.blit(tiro[4], (tx[4], ty[4]))
-        tela.blit(explosao[0], (explosaox[0], explosaoy[0]))
-        tela.blit(explosao[1], (explosaox[1], explosaoy[1]))
-        tela.blit(pontovida, (250, 0))
-        vidatxt = txt(str(vida),25,(0,0,0))
-        ptstxt = txt(str(pontos),25,(0,0,0))
+
+        nave["x"], nave["y"] = x, y
+        render_on_scren(nave)
+
+        for nave_ini in naves_inimigas:
+            render_on_scren(naves_inimigas[nave_ini])
+
+        for tiro in tiros:
+            render_on_scren(tiros[tiro])
+
+        for explosao in explosoes:
+            render_on_scren(explosao)
+
+        tela.blit(pontuacao_vida, (250, 0))
+        vidatxt = txt(str(vida), 25, (0, 0, 0))
+        ptstxt = txt(str(pontos), 25, (0, 0, 0))
         tela.blit(vidatxt, (320, 13))
         tela.blit(ptstxt, (490, 15))
-
-
 
         pygame.display.update()
 
 
-
 def intro():
-    intro = load_image("intro.png")
-    tela.blit(intro, (-40, -40))
+    intro_info = load_image("intro.png")
+    tela.blit(intro_info, (-40, -40))
     pygame.display.update()
     time.sleep(4)
     jogo()
 
 
+def quit_game():
+    pygame.quit()
+    sys.exit()
+
+
 def menu():
     playaudio()
-    while True:
-        mouse = pygame.mouse.get_pos()
-        fundomenu = load_image("fundomenu.jpg")
-        tela.blit(fundomenu, (0, 0))
-        pygame.draw.rect(tela, (255, 181, 0), (250, 150, 400, 50))
-        pygame.draw.rect(tela, (255, 181, 0), (250, 250, 400, 50))
+    while 1:
+        fundo_menu = load_image("fundomenu.jpg")
 
-        botao("STAR", 250, 150, 400, 50, (255, 181, 0), (255, 218, 0), "start")
-        botao("QUIT", 250, 250, 400, 50, (255, 181, 0), (255, 218, 0), "quit")
-        creditos = txt("Desenvolvivodo por Josimar Rachetti", 30,(255, 255, 0))
-        tela.blit(creditos, (250, 450))
+        tela.blit(fundo_menu, (0, 0))
+
+        start_msg = {"text": "START", "tam": 25, "cor": cor_preta}
+        quit_msg = {"text": "QUIT", "tam": 25, "cor": cor_preta}
+
+        botao(start_msg, 250, 150, 400, 50, cor_amarelo_escuro, cor_amarelo_claro, intro)
+        botao(quit_msg, 250, 250, 400, 50, cor_amarelo_escuro, cor_amarelo_claro, quit_game)
+
+        render_text_on_screen("Desenvolvido por Josimar Rachetti", 30, cor_amarelo, 300, 50)
+
         pygame.display.update()
+
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+                quit_game()
 
-menu()
+
+if __name__ == "__main__":
+    menu()
